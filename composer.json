@@ -1,22 +1,24 @@
 {
-    "name": "zafex/lara-apicms",
-    "description": "Laravel Api CMS.",
+    "name": "zafex/apiexlara",
+    "description": "Laravel Api.",
     "type": "package",
     "license": "MIT",
     "authors": [{
         "name": "Fajrul Akbar Zuhdi",
         "email": "fajrulaz@gmail.com"
     }],
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "autoload": {
         "psr-4": {
             "Apiex\\": "src/"
         }
     },
     "require": {
-        "laravel/framework": "5.6.*",
-        "tymon/jwt-auth": "dev-develop",
+        "laravel/framework": "^5",
+        "tymon/jwt-auth": "^1.0",
         "lcobucci/jwt": "^3.2",
-        "ramsey/uuid": "^3.8"
+        "ramsey/uuid": "^3.8",
+        "guzzlehttp/guzzle": "^6.3"
     }
 }

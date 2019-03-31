@@ -2,12 +2,74 @@
 
 namespace Apiex\Methods;
 
+/**
+ * @package zafex/apiexlara
+ *
+ * @author Fajrul Akbar Zuhdi <fajrulaz@gmail.com>
+ *
+ * @link https://github.com/zafex
+ */
+
 use Illuminate\Http\JsonResponse;
 use Ramsey\Uuid\Exception\UnsatisfiedDependencyException;
 use Ramsey\Uuid\Uuid;
 
 trait ResponseTrait
 {
+    /**
+     * @var array
+     */
+    protected $collections = [];
+
+    /**
+     * @var array
+     */
+    protected $headers = [];
+
+    /**
+     * @var mixed
+     */
+    protected $item = null;
+
+    /**
+     * @var array
+     */
+    protected $metaNames = [];
+
+    /**
+     * @param $header
+     */
+    public function addHeader($header)
+    {
+        array_push($this->headers, $header);
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function fetchMeta(): array
+    {
+        return $this->metaNames ?: [];
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getHeaders(): array
+    {
+        return $this->headers ?: [];
+    }
+
+    /**
+     * @param $meta
+     */
+    public function withMeta($meta)
+    {
+        $this->metaNames = array_merge($this->metaNames, $meta);
+        return $this;
+    }
+
     /**
      * @param $key
      * @param $status
@@ -48,5 +110,13 @@ trait ResponseTrait
             'http_status' => sprintf('%d %s', $httpStatusCode, $httpStatusMessage),
         ];
         return $results;
+    }
+
+    protected function resetVars()
+    {
+        $this->collections = [];
+        $this->metaNames = [];
+        $this->headers = [];
+        $this->item = null;
     }
 }

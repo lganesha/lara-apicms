@@ -2,18 +2,36 @@
 
 namespace Apiex\Middleware;
 
-use Apiex\Entities\Privilege;
-use Apiex\Entities\UserPermission;
+/**
+ * @package zafex/apiexlara
+ *
+ * @author Fajrul Akbar Zuhdi <fajrulaz@gmail.com>
+ *
+ * @link https://github.com/zafex
+ */
+
 use Closure;
 use Exception;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use Tymon\JWTAuth\Http\Middleware\BaseMiddleware;
+use Tymon\JWTAuth\JWTAuth;
 
-class TokenAuthorization extends BaseMiddleware
+class TokenAuthorization
 {
+    /**
+     * @var mixed
+     */
+    protected $auth;
+
+    /**
+     * @param JWTAuth $auth
+     */
+    public function __construct(JWTAuth $auth)
+    {
+        $this->auth = $auth;
+    }
+
     /**
      * Handle an incoming request.
      *
@@ -24,40 +42,30 @@ class TokenAuthorization extends BaseMiddleware
     public function handle($request, Closure $next)
     {
         try {
-            $user = JWTAuth::parseToken()->authenticate();
-            $permission = Privilege::where('section', 'permission')->where('name', $request->route()->getName())->first();
-
-            if (!$user || !$permission) {
-                return app('ResponseError')->sendMessage(__('page_not_found'), 404);
+            if (!$this->auth->parser()->setRequest($request)->hasToken()) {
+                throw new JWTException('Token not provided');
             }
 
-            $userPermission = UserPermission::where('user_id', $user->id)->where('permission_id', $permission->id)->first();
-            $permissions = $user->permissions->map(function ($object) {
-                return $object->permission->id;
-            })->toArray();
+            $token = $this->auth->parseToken();
+            $user_id = $token->getPayload()->get('sub');
+            $permission = $request->route()->getName();
 
-            if (!in_array($permission->id, $permissions)) {
-                if (!$userPermission) {
-                    return app('ResponseError')->sendMessage(__('not_allowed_access'), 403);
-                } else {
-                    if (
-                        ($request->isMethod('post') && $request->input('id') != $userPermission->object_id) ||
-                        ($request->isMethod('get') && $request->query('id') != $userPermission->object_id)
-                    ) {
-                        return app('ResponseError')->sendMessage(__('not_allowed_access'), 403);
-                    }
+            if (false == app('privileges')->hasAccess($permission, 'permission', null, $user_id)) {
+                $object_id = $request->isMethod('get') ? $request->query('id') : $request->input('id');
+                if (false == app('privileges')->hasAccess($permission, 'permission', $object_id ?: null, $user_id)) {
+                    return app('ResponseError')->withMessage(__('not_allowed_access'))->send(403);
                 }
             }
 
         } catch (Exception $e) {
             if ($e instanceof TokenInvalidException) {
-                return app('ResponseError')->sendMessage(__('token_invalid'), 400);
+                return app('ResponseError')->withMessage(__('token_invalid'))->send(400);
             } elseif ($e instanceof TokenExpiredException) {
-                return app('ResponseError')->sendMessage(__('token_expired'), 400);
+                return app('ResponseError')->withMessage(__('token_expired'))->send(400);
             } elseif ($e instanceof JWTException) {
-                return app('ResponseError')->sendMessage(__('authorization_token_not_found'), 400);
+                return app('ResponseError')->withMessage(__('authorization_token_not_found'))->send(400);
             } else {
-                return app('ResponseError')->sendException($e);
+                return app('ResponseError')->withException($e)->send();
             }
         }
 

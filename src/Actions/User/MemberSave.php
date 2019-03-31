@@ -11,40 +11,49 @@ namespace Apiex\Actions\User;
  */
 
 use Apiex\Entities;
-use Apiex\Helpers\Privileges;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Tymon\JWTAuth\JWTAuth;
 
-trait Information
+trait MemberSave
 {
     /**
      * @param Request $request
      */
-    public function detail(Request $request, JWTAuth $auth, Privileges $priv)
+    public function create(Request $request)
     {
-        $token = $auth->parseToken();
-        $user = $token->authenticate();
-        $privileges = $priv->all();
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255|unique:user',
+            'email' => 'required|string|email|max:255|unique:user',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
 
-        return app('ResponseSingular')->setItem(compact('user', 'payload', 'privileges'))->send();
+        if ($validator->fails()) {
+            return app('ResponseError')->withValidation($validator, 'create')->send();
+        }
+
+        $user = new Entities\User;
+        $user->name = $request->get('name');
+        $user->email = $request->get('email');
+        $user->password = Hash::make($request->get('password'));
+        $user->save();
+
+        return app('ResponseSingular')->setItem($user)->send(201);
     }
 
     /**
-     * @param Request $request
+     * @param  Request $request
+     * @return mixed
      */
-    public function update(Request $request, JWTAuth $auth)
+    public function update(Request $request)
     {
         try {
-
-            $token = $auth->parseToken();
-            $user = $token->authenticate();
-            $user_id = $user->id;
-
             $rules = [];
+            $user_id = $request->get('id');
+            $user = Entities\User::where('id', $user_id)->first();
+
             if ($request->has('name')) {
                 $rules['name'] = [
                     'required',
@@ -74,7 +83,6 @@ trait Information
 
             if ($rules) {
                 $validator = Validator::make($request->only(['name', 'email', 'password', 'password_confirmation']), $rules);
-
                 if ($validator->fails()) {
                     return app('ResponseError')->withValidation($validator, 'update')->send();
                 }
@@ -86,7 +94,6 @@ trait Information
                 if ($request->has('password')) {
                     $user->password = Hash::make($request->get('password'));
                 }
-
                 $user->save();
             }
 
@@ -95,8 +102,7 @@ trait Information
                     'value' => $value ?: '',
                 ]);
             }
-
-            return app('ResponseSingular')->setItem(__('update_success'))->send();
+            return app('ResponseSingular')->setItem(__('User was successfully updated.'))->send();
 
         } catch (Exception $e) {
             return app('ResponseError')->withException($e)->send();
